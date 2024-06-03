@@ -1,0 +1,66 @@
+Default.aspx code:
+
+<div class="jumbotron">
+        <h1>PnP SharePoint Demo</h1>
+
+    </div>
+
+    <div class="row">
+        <h2>SharePoint Site Details</h2>
+        <asp:Label ID="lblTitle" runat="server" Text="Label"></asp:Label><br />
+        <asp:Label ID="lblDescription" runat="server" Text="Label"></asp:Label>
+    </div>
+
+
+Web.Config Code:
+
+<appSettings>
+    <add key="UserName" value="*****@*******.onmicrosoft.com"/>
+    <add key="Password" value="********"/>
+  </appSettings>
+
+Default.aspx.cs code:
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using Microsoft.SharePoint.Client;
+using OfficeDevPnP.Core.Entities;
+using System.Configuration;
+
+namespace PnPSharePointDemo
+{
+    public partial class _Default : Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if(!IsPostBack)
+            {
+                RetrieveSiteDetails();
+            }
+        }
+
+        void RetrieveSiteDetails()
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx=authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL,username,password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+                lblTitle.Text = ctx.Web.Title;
+                lblDescription.Text = ctx.Web.Description;                
+            }
+
+        }
+    }
+}
+
+
+
+

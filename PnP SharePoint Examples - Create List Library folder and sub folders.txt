@@ -1,0 +1,218 @@
+web.config code:
+<appSettings>
+    <add key="Username" value="username"/>
+    <add key="Password" value="password"/>
+  </appSettings>
+
+
+Default.aspx Code:
+
+
+<%@ Page Title="Home Page" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="Default.aspx.cs" Inherits="PnPSharePointDemo._Default" %>
+
+<asp:Content ID="BodyContent" ContentPlaceHolderID="MainContent" runat="server">
+
+    <div class="jumbotron">
+        <h1>PnP SharePoint Demo</h1>
+
+    </div>
+
+    <div class="row">
+        <h2>SharePoint Site Details</h2>
+        <asp:Label ID="lblTitle" runat="server" Text="Label"></asp:Label><br />
+        <asp:Label ID="lblDescription" runat="server" Text="Label"></asp:Label>
+    </div>
+    <br />
+
+    <table>
+        <tr>
+            <td>List Title</td>
+             <td>
+                 <asp:TextBox ID="txtListTitle" runat="server" Width="300px"></asp:TextBox></td>
+        </tr>
+        <tr>
+            <td>List Description</td>
+             <td>
+                 <asp:TextBox ID="txtDescription" runat="server" TextMode="MultiLine" Height="56px" Width="299px"></asp:TextBox></td>
+        </tr>
+        <tr>
+            <td>
+                <asp:Button ID="btnClearLibrary" runat="server" Text="Clear" OnClick="btnClearLibrary_Click" /></td>
+             <td>
+                 <asp:Button ID="btnCreateLibrary" runat="server" Text="Create Library" OnClick="btnCreateLibrary_Click"  /><br />
+                 <asp:Label ID="lblStatusLibrary" runat="server" Text=""></asp:Label>
+             </td>
+        </tr>
+        <tr>
+            <td>
+                <asp:Button ID="btnClear" runat="server" Text="Clear" OnClick="btnClear_Click" /></td>
+             <td>
+                 <asp:Button ID="btnSubmit" runat="server" Text="Submit" OnClick="btnSubmit_Click" /><br />
+                 <asp:Label ID="lblStatus" runat="server" Text=""></asp:Label>
+             </td>
+        </tr>
+    </table>
+
+    <br />
+    <asp:Button ID="btnCreateFolder" runat="server" Text="Create Folder and Subfolders" OnClick="btnCreateFolder_Click" />
+    <asp:Label ID="lblFolder" runat="server" Text=""></asp:Label>
+
+</asp:Content>
+
+Default.aspx.cs Code:
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using Microsoft.SharePoint.Client;
+using OfficeDevPnP.Core.Entities;
+using System.Configuration;
+
+namespace PnPSharePointDemo
+{
+    public partial class _Default : Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if(!IsPostBack)
+            {
+                //RetrieveSiteDetails();
+            }
+        }
+
+        void RetrieveSiteDetails()
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx=authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL,username,password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+                lblTitle.Text = ctx.Web.Title;
+                lblDescription.Text = ctx.Web.Description;                
+            }
+
+        }
+
+        protected void btnSubmit_Click(object sender, EventArgs e)
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+
+                bool isListExists = ctx.Site.RootWeb.ListExists(txtListTitle.Text.Trim());
+                if(!isListExists)
+                {
+                    List list = ctx.Web.CreateList(ListTemplateType.GenericList, txtListTitle.Text.Trim(), false);
+                    list.Description = txtDescription.Text.Trim();
+                    list.OnQuickLaunch = true;
+                    list.Update();
+                    ctx.ExecuteQueryRetry();
+                    lblStatus.Text = "List Created successfully";
+                    ClearTextBoxes();
+                }
+                else
+                {
+                    lblStatus.Text = "List Already Exists, Give a different list title";
+                }
+                
+            }
+        }
+
+        protected void btnClear_Click(object sender, EventArgs e)
+        {
+            ClearTextBoxes();
+        }
+
+        void ClearTextBoxes()
+        {
+            txtListTitle.Text = "";
+            txtDescription.Text = "";
+        }
+
+        protected void btnCreateLibrary_Click(object sender, EventArgs e)
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+
+                bool isListExists = ctx.Site.RootWeb.ListExists(txtListTitle.Text.Trim());
+                if (!isListExists)
+                {
+                    //List list = ctx.Web.CreateList(ListTemplateType.DocumentLibrary, txtListTitle.Text.Trim(), false);
+                    //list.Description = txtDescription.Text.Trim();
+                    //list.OnQuickLaunch = true;
+                    //list.Update();
+                    //ctx.ExecuteQueryRetry();
+                    //lblStatus.Text = "library Created successfully";
+                    //ClearTextBoxes();
+
+                    List docLib = ctx.Web.CreateDocumentLibrary(txtListTitle.Text.Trim(), true);
+                    docLib.Description = txtDescription.Text.Trim();
+                    docLib.OnQuickLaunch = true;
+                    docLib.Update();
+                    ctx.ExecuteQueryRetry();
+                    lblStatus.Text = "library Created successfully";
+                    ClearTextBoxes();
+
+                }
+                else
+                {
+                    lblStatus.Text = "Library Already Exists, Give a different list title";
+                }
+
+            }
+        }
+
+        protected void btnClearLibrary_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void btnCreateFolder_Click(object sender, EventArgs e)
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+
+                List lib = ctx.Web.Lists.GetByTitle("Employees Documents Library");
+
+                bool isFolderExists = lib.RootFolder.FolderExists("Training");
+                if(!isFolderExists)
+                {
+                    Folder folder = lib.RootFolder.CreateFolder("Training").CreateFolder("SharePoint Training Documents");
+                    ctx.Load(folder);
+                    ctx.ExecuteQueryRetry();
+                    lblFolder.Text = "Folder Create Successfully";
+                }
+                else
+                {
+                    lblFolder.Text = "Folder already exists";
+                }
+
+            }
+        }
+    }
+}
+
+

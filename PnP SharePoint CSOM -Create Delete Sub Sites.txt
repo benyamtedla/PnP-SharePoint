@@ -1,0 +1,151 @@
+web.config code:
+
+<appSettings>
+    <add key="Username" value="bijay@onlysharepoint2013.onmicrosoft.com"/>
+    <add key="Password" value="password"/>
+  </appSettings>
+
+
+CreateSubSite.aspx:
+
+<%@ Page Title="" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="CreateSubSite.aspx.cs" Inherits="PnPSharePointDemo.CreateSubSite" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="MainContent" runat="server">
+    <h1>Create Sub Site using PnP SharePoint CSOM Demo</h1>
+    <table>
+        <tr>
+            <td>Sub Site Title</td>
+            <td>
+                <asp:TextBox ID="txtTilt" runat="server" Width="350px"></asp:TextBox></td>
+        </tr>
+
+         <tr>
+            <td>Sub Site URL</td>
+            <td>
+                <asp:TextBox ID="txtURL" runat="server" Width="350px"></asp:TextBox></td>
+        </tr>
+
+         <tr>
+            <td>Sub Site Description</td>
+            <td>
+                <asp:TextBox ID="txtDescription" runat="server" TextMode="MultiLine" Width="350px"></asp:TextBox></td>
+        </tr>
+
+         <tr>
+            <td>
+                <asp:Button ID="btnClear" runat="server" Text="Clear" OnClick="btnClear_Click" /></td>
+            <td>
+                <asp:Button ID="btnCreate" runat="server" Text="Create Sub Site" OnClick="btnCreate_Click" />
+                <asp:Label ID="lblStatus" runat="server" Text=""></asp:Label></td>
+        </tr>
+
+    </table>
+
+    <hr />
+    Enter SubSite URL: <asp:TextBox ID="txtSubSiteURL" runat="server"></asp:TextBox><br />
+    <asp:Button ID="btnDelete" runat="server" Text="Delete Sub site" OnClick="btnDelete_Click" />
+
+     <hr />
+
+    <asp:Button ID="btnGetAllSubsites" runat="server" Text="Get All Subsites" OnClick="btnGetAllSubsites_Click" /><br />
+
+    <asp:Label ID="lblSubsites" runat="server" Text=""></asp:Label>
+</asp:Content>
+
+
+CreateSubSite.aspx.cs Code:
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using Microsoft.SharePoint.Client;
+using OfficeDevPnP.Core.Entities;
+using System.Configuration;
+
+namespace PnPSharePointDemo
+{
+    public partial class CreateSubSite : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void btnCreate_Click(object sender, EventArgs e)
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+               bool isSiteExists= ctx.Site.RootWeb.WebExists(txtURL.Text.Trim());
+
+                if(!isSiteExists)
+                {
+                    Web web = ctx.Site.RootWeb.CreateWeb(txtTilt.Text.Trim(), txtURL.Text.Trim(), txtDescription.Text.Trim(), "STS#0", 1033, true, true);
+                    ctx.Load(web);
+                    ctx.ExecuteQueryRetry();
+                    lblStatus.Text = "Sub site created successfully.";
+                }
+                else
+                {
+                    lblStatus.Text = "Subsite with same URL already exists.";
+                }
+            }
+        }
+
+        protected void btnClear_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void btnDelete_Click(object sender, EventArgs e)
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+                bool isSiteExists = ctx.Site.RootWeb.WebExists(txtSubSiteURL.Text.Trim());
+
+                if (!isSiteExists)
+                {
+                    lblStatus.Text = "Subsite with same URL does not exists.";
+                }
+                else
+                {
+                    var web = ctx.Site.RootWeb.DeleteWeb(txtSubSiteURL.Text.Trim());
+                    ctx.ExecuteQueryRetry();
+                    lblStatus.Text = "Subsite deleted.";
+                }
+            }
+        }
+
+        protected void btnGetAllSubsites_Click(object sender, EventArgs e)
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://onlysharepoint2013.sharepoint.com/sites/SharePointSky/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+                var siteCollection = ctx.Site.GetAllWebUrls();
+                foreach (var item in siteCollection)
+                {
+                    lblSubsites.Text += item + "<br/>";
+                }
+            }
+        }
+    }
+}

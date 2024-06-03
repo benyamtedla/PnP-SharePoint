@@ -1,0 +1,162 @@
+Setup.aspx code:
+
+<asp:Button ID="btnCreateList" runat="server" Text="Create List" OnClick="btnCreateList_Click" /><br />
+
+    <asp:Label ID="lblStatus" runat="server" Text=""></asp:Label>
+
+
+Setup.aspx.cs code:
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using Microsoft.SharePoint.Client;
+using OfficeDevPnP.Core.Entities;
+using System.Configuration;
+using Microsoft.SharePoint.Client.Taxonomy;
+
+namespace PnPSharePointDemo
+{
+    public partial class SetupList : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void btnCreateList_Click(object sender, EventArgs e)
+        {
+            CreateSiteColumn();
+            CreateContentType();
+            CreateList();
+        }
+
+        void CreateSiteColumn()
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://sharepointskyfreetraining.sharepoint.com/sites/IT/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+
+                if (!ctx.Web.FieldExistsByName("Product_Code"))
+                {
+                    FieldCreationInformation fci = new FieldCreationInformation(FieldType.Text);
+                    fci.Group = "SharePoint Sky Site Column";
+                    fci.DisplayName = "Product Code";
+                    fci.InternalName = "Product_Code";
+                    fci.Id = Guid.NewGuid();
+                    fci.Required = true;
+                    fci.AddToDefaultView = true;
+                    ctx.Web.CreateField(fci);
+                    ctx.Web.Update();
+                }
+                if (!ctx.Web.FieldExistsByName("Product_Description"))
+                {
+                    FieldCreationInformation fci = new FieldCreationInformation(FieldType.Note);
+                    fci.Group = "SharePoint Sky Site Column";
+                    fci.DisplayName = "Product Description";
+                    fci.InternalName = "Product_Description";
+                    fci.Id = Guid.NewGuid();
+                    fci.Required = true;
+                    fci.AddToDefaultView = true;
+                    ctx.Web.CreateField(fci);
+                    ctx.Web.Update();
+                }
+
+                if (!ctx.Web.FieldExistsByName("Product_Brand"))
+                {
+                    TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(ctx.Web.Context);
+                    TermStore termStore = taxonomySession.GetDefaultSiteCollectionTermStore();
+                    TermGroup termGroup = termStore.Groups.GetByName("CompanyName");
+                    TermSet termSet = termGroup.TermSets.GetByName("Products");
+                    ctx.Web.Context.Load(termStore);
+                    ctx.Web.Context.Load(termSet);
+                    ctx.Web.Context.ExecuteQuery();
+
+                    TaxonomyFieldCreationInformation taxonomyFieldCreationInformation = new TaxonomyFieldCreationInformation()
+                    {
+                        Id = Guid.NewGuid(),
+                        InternalName = "Product_Brand",
+                        DisplayName = "Brand",
+                        Group = "SharePoint Sky Site Column",
+                        TaxonomyItem = termSet,
+                        MultiValue = false,
+                    };
+                    ctx.Web.CreateTaxonomyField(taxonomyFieldCreationInformation);
+                }
+                ctx.ExecuteQuery();
+            }
+
+        }
+
+        void CreateContentType()
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://sharepointskyfreetraining.sharepoint.com/sites/IT/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+                if(!ctx.Web.ContentTypeExistsByName("Add New Product"))
+                {
+                    ctx.Web.CreateContentType("Add New Product", "0x01008E939B5457E54428BAD75166CACDBB17", "SharePoint Sky Content Types");
+                    ctx.ExecuteQueryRetry();
+                }
+
+                ctx.Web.AddFieldToContentTypeByName("Add New Product",ctx.Web.GetFieldByInternalName("Product_Code").Id, true);
+                ctx.Web.AddFieldToContentTypeByName("Add New Product", ctx.Web.GetFieldByInternalName("Product_Description").Id, true);
+                ctx.Web.AddFieldToContentTypeByName("Add New Product", ctx.Web.GetFieldByInternalName("Product_Brand").Id, true);
+                ctx.ExecuteQueryRetry();
+            }
+        }
+
+        void CreateList()
+        {
+            OfficeDevPnP.Core.AuthenticationManager authMrg = new OfficeDevPnP.Core.AuthenticationManager();
+            string siteURL = "https://sharepointskyfreetraining.sharepoint.com/sites/IT/";
+            string username = ConfigurationManager.AppSettings["Username"].ToString();
+            string password = ConfigurationManager.AppSettings["Password"].ToString();
+            using (var ctx = authMrg.GetSharePointOnlineAuthenticatedContextTenant(siteURL, username, password))
+            {
+                ctx.Load(ctx.Web);
+                ctx.ExecuteQueryRetry();
+
+                if(!ctx.Web.ListExists("SharePointSkyProductList"))
+                {
+                    ctx.Web.CreateList(ListTemplateType.GenericList, "SharePointSkyProductList", false);
+                    ctx.ExecuteQueryRetry();
+
+                    List list = ctx.Web.GetListByTitle("SharePointSkyProductList");
+                    list.ContentTypesEnabled = true;
+                    list.Update();
+                    ctx.ExecuteQueryRetry();
+
+                    list.AddContentTypeToListByName("Add New Product", false);
+                    ctx.ExecuteQueryRetry();
+
+                    list.GetContentTypeByName("Item").Hidden = true;
+                    list.Update();
+                    ctx.ExecuteQueryRetry();
+
+                    Microsoft.SharePoint.Client.View view = list.DefaultView;
+
+                    view.ViewFields.Add("Product_Code");
+                    view.ViewFields.Add("Product_Description");
+                    view.ViewFields.Add("Product_Brand");
+                    view.Update();
+                    list.Update();
+                    ctx.ExecuteQueryRetry();
+                }
+            }
+        }
+    }
+}
